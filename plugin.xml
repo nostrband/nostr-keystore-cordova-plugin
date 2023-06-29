@@ -31,7 +31,6 @@
         <source-file src="src/android/KeyStorageUtil.kt" target-dir="java/com/nostr/band/keyStore/" />
         <source-file src="src/android/Bech32Util.kt" target-dir="java/com/nostr/band/keyStore/" />
         <source-file src="src/android/Utils.kt" target-dir="java/com/nostr/band/keyStore/" />
-        <resource-file src="src/android/inputStyle.xml" target="res/values/inputStyle.xml" />
         <framework custom="true" src="src/android/gradle.gradle" type="gradleReference"/>
 
         <config-file target="AndroidManifest.xml" parent="application">
