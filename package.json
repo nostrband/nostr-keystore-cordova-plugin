@@ -1,0 +1,28 @@
+{
+  "name": "nostr-cordova-plugin-secure-key",
+  "version": "1.0.0",
+  "description": "Cordova plugin for Nostr key storage and management",
+  "cordova": {
+    "id": "nostr-cordova-plugin-secure-key",
+    "platforms": [
+      "android"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/denis1989java/nostr-cordova-plugin-secure-key.git"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "mobile",
+    "android",
+    "nostr",
+    "keystore"
+  ],
+  "author": "Dzianis Monich",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/denis1989java/nostr-cordova-plugin-secure-key/issues"
+  },
+  "homepage": "https://github.com/denis1989java/nostr-cordova-plugin-secure-key.git"
+}

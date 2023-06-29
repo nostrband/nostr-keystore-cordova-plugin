@@ -1,0 +1,45 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin id="cordova-plugin-secure-key-store"
+        version="1.5.6"
+        xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <name>Nostr</name>
+    <author>Dzianis Monich</author>
+
+    <description>
+        Cordova plugin for Nostr key storage and management.
+    </description>
+
+    <license>MIT</license>
+
+    <keywords>ecosystem:cordova, mobile, android, nostr, keystore</keywords>
+
+    <js-module name="NostrKeyStore" src="www/nostr.js">
+        <clobbers target="cordova.plugins.NostrKeyStore" />
+    </js-module>
+
+    <platform name="android">
+        <config-file parent="/*" target="res/xml/config.xml">
+            <preference name="GradlePluginKotlinEnabled" value="true" />
+            <feature name="NostrKeyStore">
+                <param name="android-package" value="com.nostr.band.keyStore.Nostr" />
+            </feature>
+        </config-file>
+        <config-file parent="/*" target="AndroidManifest.xml" />
+        <source-file src="src/android/Nostr.java" target-dir="src/com/nostr/band/keyStore" />
+        <source-file src="src/android/KeyStorageUtil.kt" target-dir="java/com/nostr/band/keyStore/" />
+        <source-file src="src/android/Bech32Util.kt" target-dir="java/com/nostr/band/keyStore/" />
+        <source-file src="src/android/Utils.kt" target-dir="java/com/nostr/band/keyStore/" />
+        <resource-file src="src/android/inputStyle.xml" target="res/values/inputStyle.xml" />
+        <framework custom="true" src="src/android/gradle.gradle" type="gradleReference"/>
+
+        <config-file target="AndroidManifest.xml" parent="application">
+            <activity android:name="com.nostr.band.keyStore.ModalActivity"></activity>
+        </config-file>
+
+    </platform>
+
+
+
+</plugin>
