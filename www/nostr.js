@@ -3,6 +3,7 @@ var exec = require('cordova/exec');
 const SERVICE_NAME = "NostrKeyStore";
 const SIGN_EVENT = "signEvent";
 const GET_PUBLIC_KEY = "getPublicKey";
+const LIST_KEYS = "listKeys";
 
 var NostrKeyStore = {
 
@@ -12,6 +13,10 @@ var NostrKeyStore = {
 
     getPublicKey: function (success, error) {
         exec(success, error, SERVICE_NAME, GET_PUBLIC_KEY, []);
+    },
+
+    listKeys: function (success, error) {
+        exec(success, error, SERVICE_NAME, LIST_KEYS, []);
     }
 
 };
