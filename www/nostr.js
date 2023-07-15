@@ -24,8 +24,8 @@ var NostrKeyStore = {
         exec(success, error, SERVICE_NAME, LIST_KEYS, []);
     },
 
-    addKey: function (success, error, msg) {
-        exec(success, error, SERVICE_NAME, ADD_KEY, [msg]);
+    addKey: function (success, error) {
+        exec(success, error, SERVICE_NAME, ADD_KEY, []);
     },
 
     selectKey: function (success, error, msg) {
