@@ -4,6 +4,11 @@ const SERVICE_NAME = "NostrKeyStore";
 const SIGN_EVENT = "signEvent";
 const GET_PUBLIC_KEY = "getPublicKey";
 const LIST_KEYS = "listKeys";
+const ADD_KEY = "addKey";
+const SELECT_KEY = "selectKey";
+const EDIT_KEY = "editKey";
+const SHOW_KEY = "showKey";
+const DELETE_KEY = "deleteKey";
 
 var NostrKeyStore = {
 
@@ -17,6 +22,26 @@ var NostrKeyStore = {
 
     listKeys: function (success, error) {
         exec(success, error, SERVICE_NAME, LIST_KEYS, []);
+    },
+
+    addKey: function (success, error, msg) {
+        exec(success, error, SERVICE_NAME, ADD_KEY, [msg]);
+    },
+
+    selectKey: function (success, error, msg) {
+        exec(success, error, SERVICE_NAME, SELECT_KEY, [msg]);
+    },
+
+    editKey: function (success, error, msg) {
+        exec(success, error, SERVICE_NAME, EDIT_KEY, [msg]);
+    },
+
+    showKey: function (success, error, msg) {
+        exec(success, error, SERVICE_NAME, SHOW_KEY, [msg]);
+    },
+
+    deleteKey: function (success, error, msg) {
+        exec(success, error, SERVICE_NAME, DELETE_KEY, [msg]);
     }
 
 };

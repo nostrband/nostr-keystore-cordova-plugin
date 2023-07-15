@@ -6,11 +6,13 @@ import android.content.Context;
 import android.graphics.Color;
 import android.security.KeyPairGeneratorSpec;
 import android.util.Log;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+
 import com.google.android.material.R;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
-import kotlin.Triple;
+
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
@@ -20,23 +22,36 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.spongycastle.util.encoders.Hex;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.cert.CertificateException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.Objects;
+
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.security.auth.x500.X500Principal;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.security.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.List;
+
+import kotlin.Triple;
 
 public class Nostr extends CordovaPlugin {
-
-  private static final String DEFAULT_VAL = "NOSTR_PK";
+  private static final String CURRENT_ALIAS = "currentAlias";
   private static final String KEYSTORE_PROVIDER_1 = "AndroidKeyStore";
   private static final String KEYSTORE_PROVIDER_2 = "AndroidKeyStoreBCWorkaround";
   private static final String KEYSTORE_PROVIDER_3 = "AndroidOpenSSL";
@@ -44,7 +59,7 @@ public class Nostr extends CordovaPlugin {
   private static final String TAG = "NostrLogTag";
 
   @Override
-  public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+  public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException, CertificateException, KeyStoreException, IOException, NoSuchAlgorithmException {
 
     if (action.equals("getPublicKey")) {
 
@@ -53,6 +68,31 @@ public class Nostr extends CordovaPlugin {
     } else if (action.equals("signEvent")) {
 
       return signEvent(args, callbackContext);
+
+    } else if (action.equals("listKeys")) {
+
+      return listKeys(callbackContext);
+
+    } else if (action.equals("addKey")) {
+
+      return addKey(args, callbackContext);
+
+    } else if (action.equals("selectKey")) {
+
+      return selectKey(args, callbackContext);
+
+    } else if (action.equals("editKey")) {
+
+      return editKey(args, callbackContext);
+
+    } else if (action.equals("showKey")) {
+
+      return showKey(args, callbackContext);
+
+    } else if (action.equals("deleteKey")) {
+
+      return deleteKey(args, callbackContext);
+
     }
 
     return false;
@@ -60,13 +100,15 @@ public class Nostr extends CordovaPlugin {
 
   private boolean getPublicKey(CallbackContext callbackContext) {
 
-    String privateKey = getPrivateKey(DEFAULT_VAL);
+    String currentAlias = getCurrentAlias();
+
+    String privateKey = (Objects.nonNull(currentAlias) && !"".equals(currentAlias)) ? getPrivateKey(currentAlias) : "";
 
     Log.i(TAG, "privateKey " + privateKey);
 
     if ("".equals(privateKey)) {
 
-      prompt("Please enter your private key", "Private key", Arrays.asList("cancel", "save"), "nsec...", callbackContext);
+      prompt("Please enter your private key", "Private key", Arrays.asList("cancel", "save"), callbackContext);
 
       return true;
     }
@@ -81,7 +123,8 @@ public class Nostr extends CordovaPlugin {
 
   private boolean signEvent(JSONArray args, CallbackContext callbackContext) throws JSONException {
 
-    String privateKey = getPrivateKey(DEFAULT_VAL);
+    String currentAlias = getCurrentAlias();
+    String privateKey = getPrivateKey(currentAlias);
     byte[] publicKey = Utils.pubkeyCreate(getBytePrivateKey(privateKey));
     JSONObject jsonObject = args.getJSONObject(0);
     int kind = jsonObject.getInt("kind");
@@ -104,6 +147,68 @@ public class Nostr extends CordovaPlugin {
     return true;
   }
 
+  private boolean listKeys(CallbackContext callbackContext) throws KeyStoreException, CertificateException, IOException, NoSuchAlgorithmException {
+    KeyStore keyStore = KeyStore.getInstance(getKeyStore());
+    keyStore.load(null);
+
+    Enumeration<String> aliases = keyStore.aliases();
+    JSONObject jsonObject = new JSONObject();
+
+    Collections.list(aliases).forEach(alias -> {
+      String privateKey = getPrivateKey(alias);
+      String publicKey = new String(generatePublicKey(privateKey), StandardCharsets.UTF_8);
+      JSONObject keysObject = new JSONObject();
+      try {
+        keysObject.put("privateKey", privateKey);
+        keysObject.put("publicKey", publicKey);
+
+        jsonObject.put(alias, keysObject);
+      } catch (JSONException e) {
+        throw new RuntimeException(e);
+      }
+
+    });
+
+    callbackContext.success(jsonObject);
+
+    return true;
+  }
+
+  private boolean addKey(JSONArray args, CallbackContext callbackContext) {
+
+    callbackContext.success(args);
+
+    return true;
+  }
+
+  private boolean selectKey(JSONArray args, CallbackContext callbackContext) {
+
+    callbackContext.success(args);
+
+    return true;
+  }
+
+  private boolean editKey(JSONArray args, CallbackContext callbackContext) {
+
+    callbackContext.success(args);
+
+    return true;
+  }
+
+  private boolean showKey(JSONArray args, CallbackContext callbackContext) {
+
+    callbackContext.success(args);
+
+    return true;
+  }
+
+  private boolean deleteKey(JSONArray args, CallbackContext callbackContext) {
+
+    callbackContext.success(args);
+
+    return true;
+  }
+
   private List<List<String>> parseTags(JSONArray jsonArray) throws JSONException {
     List<List<String>> allTags = new ArrayList<>();
     for (int i = 0; i < jsonArray.length(); i++) {
@@ -115,6 +220,14 @@ public class Nostr extends CordovaPlugin {
       allTags.add(tags);
     }
     return allTags;
+  }
+
+  private void saveCurrentAlias(String value) {
+    savePrivateKey(CURRENT_ALIAS, value);
+  }
+
+  private String getCurrentAlias() {
+    return getPrivateKey(CURRENT_ALIAS);
   }
 
   private void savePrivateKey(String alias, String input) {
@@ -210,19 +323,31 @@ public class Nostr extends CordovaPlugin {
     }
   }
 
-  private synchronized void prompt(String message, String title, List<String> buttonLabels, String defaultText, final CallbackContext callbackContext) {
+  private synchronized void prompt(String message, String title, List<String> buttonLabels, final CallbackContext callbackContext) {
 
     Runnable runnable = () -> {
-      final TextInputLayout promptInput = initInput(defaultText);
-      AlertDialog.Builder alertDialog = initAlertDialog(promptInput, message, title);
+
+      AlertDialog.Builder alertDialog = initAlertDialog(message, title);
+      final TextInputLayout namePromptInput = initInput("name");
+      final TextInputLayout nsecPromptInput = initInput("nsec...");
+      initInputs(alertDialog, namePromptInput, nsecPromptInput);
 
       setNegativeButton(alertDialog, buttonLabels.get(0), callbackContext);
-      setPositiveButton(alertDialog, buttonLabels.get(1), promptInput, callbackContext);
+      setPositiveButton(alertDialog, buttonLabels.get(1), namePromptInput, nsecPromptInput, callbackContext);
       setOnCancelListener(alertDialog, callbackContext);
       changeTextDirection(alertDialog);
     };
 
     this.cordova.getActivity().runOnUiThread(runnable);
+  }
+
+  private void initInputs(AlertDialog.Builder alertDialog, TextInputLayout namePromptInput, TextInputLayout nsecPromptInput) {
+    LinearLayout linearLayout = new LinearLayout(alertDialog.getContext());
+    linearLayout.setOrientation(LinearLayout.VERTICAL);
+    linearLayout.addView(namePromptInput);
+    linearLayout.addView(nsecPromptInput);
+
+    alertDialog.setView(linearLayout);
   }
 
   @SuppressLint("RestrictedApi")
@@ -244,23 +369,25 @@ public class Nostr extends CordovaPlugin {
     return textInputLayout;
   }
 
-  private AlertDialog.Builder initAlertDialog(TextInputLayout input, String message, String title) {
+  private AlertDialog.Builder initAlertDialog(String message, String title) {
     AlertDialog.Builder alertDialog = createDialog(cordova);
     alertDialog.setMessage(message);
     alertDialog.setTitle(title);
     alertDialog.setCancelable(true);
-    alertDialog.setView(input);
 
     return alertDialog;
   }
 
-  private void setPositiveButton(AlertDialog.Builder alertDialog, String buttonLabel, TextInputLayout promptInput, CallbackContext callbackContext) {
+  private void setPositiveButton(AlertDialog.Builder alertDialog, String buttonLabel, TextInputLayout namePromptInput, TextInputLayout nsecPromptInput, CallbackContext callbackContext) {
     alertDialog.setPositiveButton(buttonLabel,
             (dialog, which) -> {
               dialog.dismiss();
-              if (promptInput.getEditText().getText() != null && !promptInput.getEditText().getText().toString().trim().isEmpty()) {
-                String privateKey = promptInput.getEditText().getText().toString();
-                savePrivateKey(DEFAULT_VAL, privateKey);
+              if (namePromptInput.getEditText() != null && namePromptInput.getEditText().getText() != null && !namePromptInput.getEditText().getText().toString().trim().isEmpty() &&
+                      nsecPromptInput.getEditText() != null && nsecPromptInput.getEditText().getText() != null && !nsecPromptInput.getEditText().getText().toString().trim().isEmpty()) {
+                String privateKey = nsecPromptInput.getEditText().getText().toString();
+                String keyName = namePromptInput.getEditText().getText().toString();
+                savePrivateKey(keyName, privateKey);
+                saveCurrentAlias(keyName);
                 String publicKey = new String(generatePublicKey(privateKey), StandardCharsets.UTF_8);
                 JSONObject result = initResponseJSONObject(publicKey);
                 callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
