@@ -59,7 +59,7 @@ public class Nostr extends CordovaPlugin {
   private static final String TAG = "NostrLogTag";
 
   @Override
-  public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException, CertificateException, KeyStoreException, IOException, NoSuchAlgorithmException {
+  public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
 
     if (action.equals("getPublicKey")) {
 
@@ -71,7 +71,12 @@ public class Nostr extends CordovaPlugin {
 
     } else if (action.equals("listKeys")) {
 
-      return listKeys(callbackContext);
+      try {
+        return listKeys(callbackContext);
+      } catch (KeyStoreException | CertificateException | IOException | NoSuchAlgorithmException e) {
+
+        return false;
+      }
 
     } else if (action.equals("addKey")) {
 
