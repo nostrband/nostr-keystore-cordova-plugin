@@ -5,4 +5,5 @@ dependencies {
     implementation group: 'com.google.code.gson', name: 'gson', version: '2.10.1'
     implementation 'com.google.android.material:material:1.0.0'
     implementation group: 'com.google.zxing', name: 'core', version: '3.5.1'
+    implementation group: 'com.google.zxing', name: 'javase', version: '3.5.1'
 }
