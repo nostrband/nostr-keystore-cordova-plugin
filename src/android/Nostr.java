@@ -270,6 +270,18 @@ public class Nostr extends CordovaPlugin {
   }
 
   private void addKey(JSONObject keysObjectData, String publicKey, String keyName) throws JSONException {
+    JSONArray names = keysObjectData.names();
+    if (names != null && names.length() > 0) {
+      for (int i = 0; i < names.length(); i++) {
+        String name = names.getString(i);
+        if (!name.equals(CURRENT_ALIAS)) {
+          JSONObject jsonObject = keysObjectData.getJSONObject(name);
+          jsonObject.put("isCurrent", false);
+          keysObjectData.put(name, jsonObject);
+        }
+      }
+    }
+
     keysObjectData.put(CURRENT_ALIAS, publicKey);
 
     JSONObject newKey = new JSONObject();
