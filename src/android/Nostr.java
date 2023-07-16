@@ -6,6 +6,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.security.KeyPairGeneratorSpec;
 import android.util.Log;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -34,8 +35,11 @@ import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
@@ -166,8 +170,12 @@ public class Nostr extends CordovaPlugin {
     String keysData = getKeysStringData();
     JSONObject keysObjectData = getKeysObjectData(keysData);
 
+    if (!existKey(publicKey, keysObjectData.names())) {
+      callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Key doesn't exist"));
+      return false;
+    }
+
     keysObjectData.put(CURRENT_ALIAS, publicKey);
-    //todo add validation for existing key
 
     KeyStorage.writeValues(getContext(), KEYS_ALIAS, keysObjectData.toString().getBytes());
 
@@ -182,10 +190,17 @@ public class Nostr extends CordovaPlugin {
     String publicKey = jsonObject.getString("publicKey");
     String name = jsonObject.getString("name");
 
-    //todo add validation for existed key and name
-
     String keysData = getKeysStringData();
     JSONObject keysObjectData = getKeysObjectData(keysData);
+
+    if (!existKey(publicKey, keysObjectData.names())) {
+      callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Key doesn't exist"));
+      return false;
+    }
+    if (existKeyName(publicKey, name, keysObjectData)) {
+      callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Name already exist"));
+      return false;
+    }
 
     JSONObject key = keysObjectData.getJSONObject(publicKey);
     key.put("name", name);
@@ -204,15 +219,20 @@ public class Nostr extends CordovaPlugin {
 
     String privateKey = getPrivateKey(publicKey);
 
-    //todo add validation for existing key
+    if ("".equals(privateKey)) {
+      callbackContext.error("Key doesn't exist");
+      return false;
+    }
+
 
     Runnable runnable = () -> {
-      initAlertDialog(privateKey, "Private Key");
+      AlertDialog.Builder alertDialog = initAlertDialog(privateKey, "Private Key");
+      setOkButton(alertDialog, "ok", callbackContext);
+      setOnOkListener(alertDialog, callbackContext);
+      changeTextDirection(alertDialog);
     };
 
     this.cordova.getActivity().runOnUiThread(runnable);
-
-    callbackContext.success(args);
 
     return true;
   }
@@ -225,17 +245,20 @@ public class Nostr extends CordovaPlugin {
     String keysData = getKeysStringData();
     JSONObject keysObjectData = getKeysObjectData(keysData);
 
-    //todo add validation for existing key
-
-    keysObjectData.remove(publicKey);
-    String currentKey = keysObjectData.getString(CURRENT_ALIAS);
-    if (currentKey.equals(publicKey)) {
-      keysObjectData.put(CURRENT_ALIAS, "");
+    if (!existKey(publicKey, keysObjectData.names())) {
+      callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Key doesn't exist"));
+      return false;
     }
 
-    KeyStorage.removeValues(getContext(), publicKey);
+    Runnable runnable = () -> {
+      AlertDialog.Builder alertDialog = initAlertDialog("", "Do you want delete key?");
+      setPositiveDeleteButton(alertDialog, "ok", keysObjectData, publicKey, callbackContext);
+      setOkButton(alertDialog, "cancel", callbackContext);
+      setOnOkListener(alertDialog, callbackContext);
+      changeTextDirection(alertDialog);
+    };
 
-    callbackContext.success(keysObjectData);
+    this.cordova.getActivity().runOnUiThread(runnable);
 
     return true;
   }
@@ -253,20 +276,55 @@ public class Nostr extends CordovaPlugin {
     return allTags;
   }
 
-  private void saveCurrentAlias(String publicKey, String keyName) {
+  private void saveCurrentAlias(JSONObject keysObjectData, String keyName, String publicKey) throws JSONException {
+    addKey(keysObjectData, publicKey, keyName);
+    KeyStorage.writeValues(getContext(), KEYS_ALIAS, keysObjectData.toString().getBytes());
+  }
 
-    try {
-      String keysData = getKeysStringData();
-      JSONObject keysObjectData = getKeysObjectData(keysData);
+  private boolean existKey(String publicKey, JSONArray names) throws JSONException {
 
-      //todo add validation for existed key and name
-      addKey(keysObjectData, publicKey, keyName);
+    Set<String> namesList = mapJSONArrayToSet(names);
 
-      KeyStorage.writeValues(getContext(), KEYS_ALIAS, keysObjectData.toString().getBytes());
-    } catch (JSONException e) {
-      e.printStackTrace();
+    if (!namesList.contains(publicKey)) {
+      return false;
+    }
+    return true;
+  }
+
+  private boolean existKeyName(String publicKey, String name, JSONObject keysObjectData) throws JSONException {
+
+    Set<String> namesList = mapJSONArrayToSet(keysObjectData.names());
+
+    Set<String> namesSet = namesList.stream()
+            .filter(keyName -> !CURRENT_ALIAS.equals(keyName) && !publicKey.equals(keyName))
+            .map(keyName -> {
+              try {
+                JSONObject key = keysObjectData.getJSONObject(keyName);
+                return key.getString("name");
+              } catch (JSONException e) {
+                return null;
+              }
+            })
+            .collect(Collectors.toSet());
+
+    if (namesSet.contains(name)) {
+      return true;
+    }
+    return false;
+  }
+
+
+  private Set<String> mapJSONArrayToSet(JSONArray names) throws JSONException {
+    Set<String> namesList = new HashSet<>();
+
+    if (names != null && names.length() > 0) {
+      for (int i = 0; i < names.length(); i++) {
+        String name = names.getString(i);
+        namesList.add(name);
+      }
     }
 
+    return namesList;
   }
 
   private void addKey(JSONObject keysObjectData, String publicKey, String keyName) throws JSONException {
@@ -418,8 +476,9 @@ public class Nostr extends CordovaPlugin {
 
       setNegativeButton(alertDialog, buttonLabels.get(0), callbackContext);
       setPositiveButton(alertDialog, buttonLabels.get(1), namePromptInput, nsecPromptInput, callbackContext);
+      setNeutralButton(alertDialog, "Generate nsec", nsecPromptInput, callbackContext);
       setOnCancelListener(alertDialog, callbackContext);
-      changeTextDirection(alertDialog);
+      changeTextDirection1(alertDialog, nsecPromptInput);
     };
 
     this.cordova.getActivity().runOnUiThread(runnable);
@@ -466,19 +525,56 @@ public class Nostr extends CordovaPlugin {
     alertDialog.setPositiveButton(buttonLabel,
             (dialog, which) -> {
               dialog.dismiss();
-              if (namePromptInput.getEditText() != null && namePromptInput.getEditText().getText() != null && !namePromptInput.getEditText().getText().toString().trim().isEmpty() &&
-                      nsecPromptInput.getEditText() != null && nsecPromptInput.getEditText().getText() != null && !nsecPromptInput.getEditText().getText().toString().trim().isEmpty()) {
-                String privateKey = nsecPromptInput.getEditText().getText().toString();
-                String keyName = namePromptInput.getEditText().getText().toString();
-                String publicKey = new String(generatePublicKey(privateKey), StandardCharsets.UTF_8);
-                saveCurrentAlias(publicKey, keyName);
-                savePrivateKey(publicKey, privateKey);
+              String privateKey = nsecPromptInput.getEditText().getText().toString();
+              String keyName = namePromptInput.getEditText().getText().toString();
+              String publicKey = new String(generatePublicKey(privateKey), StandardCharsets.UTF_8);
 
-                JSONObject result = initResponseJSONObject(publicKey);
-                callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
-              } else {
-                callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
+              try {
+                String keysData = getKeysStringData();
+                JSONObject keysObjectData = getKeysObjectData(keysData);
+                if (!existKey(publicKey, keysObjectData.names())) {
+                  callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Key doesn't exist"));
+                }
+                if (existKeyName(publicKey, keyName, keysObjectData)) {
+                  callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Name already exist"));
+                }
+                saveCurrentAlias(keysObjectData, keyName, publicKey);
+              } catch (JSONException e) {
+                throw new RuntimeException(e);
               }
+
+              savePrivateKey(publicKey, privateKey);
+
+              JSONObject result = initResponseJSONObject(publicKey);
+              callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
+
+            });
+  }
+
+  private void setNeutralButton(AlertDialog.Builder alertDialog, String buttonLabel, TextInputLayout nsecPromptInput, CallbackContext callbackContext) {
+    alertDialog.setNeutralButton(buttonLabel,
+            (dialog, which) -> {
+            });
+  }
+
+  private void setPositiveDeleteButton(AlertDialog.Builder alertDialog, String buttonLabel, JSONObject keysObjectData, String publicKey, CallbackContext callbackContext) {
+    alertDialog.setPositiveButton(buttonLabel,
+            (dialog, which) -> {
+              dialog.dismiss();
+
+              keysObjectData.remove(publicKey);
+              try {
+                String currentKey = keysObjectData.getString(CURRENT_ALIAS);
+                if (currentKey.equals(publicKey)) {
+                  keysObjectData.put(CURRENT_ALIAS, "");
+                }
+              } catch (JSONException e) {
+                throw new RuntimeException(e);
+              }
+
+              KeyStorage.removeValues(getContext(), publicKey);
+
+              callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, keysObjectData));
             });
   }
 
@@ -488,6 +584,21 @@ public class Nostr extends CordovaPlugin {
               dialog.dismiss();
               callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
             });
+  }
+
+  private void setOkButton(AlertDialog.Builder alertDialog, String buttonLabel, CallbackContext callbackContext) {
+    alertDialog.setNegativeButton(buttonLabel,
+            (dialog, which) -> {
+              dialog.dismiss();
+              callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK));
+            });
+  }
+
+  private void setOnOkListener(AlertDialog.Builder alertDialog, CallbackContext callbackContext) {
+    alertDialog.setOnCancelListener(dialog -> {
+      dialog.dismiss();
+      callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK));
+    });
   }
 
   private void setOnCancelListener(AlertDialog.Builder alertDialog, CallbackContext callbackContext) {
@@ -524,6 +635,27 @@ public class Nostr extends CordovaPlugin {
     int currentApiVersion = android.os.Build.VERSION.SDK_INT;
     dlg.create();
     AlertDialog dialog = dlg.show();
+    dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+
+    });
+
+    if (currentApiVersion >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
+      TextView messageView = dialog.findViewById(android.R.id.message);
+      messageView.setTextDirection(android.view.View.TEXT_DIRECTION_LOCALE);
+    }
+  }
+
+  @SuppressLint("NewApi")
+  private void changeTextDirection1(AlertDialog.Builder dlg, TextInputLayout nsecPromptInput) {
+    int currentApiVersion = android.os.Build.VERSION.SDK_INT;
+    dlg.create();
+    AlertDialog dialog = dlg.show();
+    dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+      EditText editText = nsecPromptInput.getEditText();
+      //todo implement logic for generating nsec
+      editText.setText("nsec1560zpnjua2kuzas7qj7n7h0adxk4d8z4d59vxkattetq8ryway6q5v0psr");
+    });
+
     if (currentApiVersion >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
       TextView messageView = dialog.findViewById(android.R.id.message);
       messageView.setTextDirection(android.view.View.TEXT_DIRECTION_LOCALE);
