@@ -3,7 +3,9 @@ package com.nostr.band.keyStore;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.security.KeyPairGeneratorSpec;
 import android.util.Log;
 import android.widget.EditText;
@@ -45,7 +47,12 @@ import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.security.auth.x500.X500Principal;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
+import com.journeyapps.barcodescanner.BarcodeEncoder;
 
 import kotlin.Triple;
 
@@ -227,7 +234,7 @@ public class Nostr extends CordovaPlugin {
 
 
     Runnable runnable = () -> {
-      AlertDialog.Builder alertDialog = initAlertDialog(privateKey, "Private Key");
+      AlertDialog.Builder alertDialog = initAlertDialog1(privateKey, "Private Key");
       setOkButton(alertDialog, "ok", callbackContext);
       setOnOkListener(alertDialog, callbackContext);
       changeTextDirection(alertDialog);
@@ -519,6 +526,25 @@ public class Nostr extends CordovaPlugin {
     alertDialog.setTitle(title);
     alertDialog.setCancelable(true);
 
+    return alertDialog;
+  }
+
+  private AlertDialog.Builder initAlertDialog1(String message, String title) {
+    AlertDialog.Builder alertDialog = createDialog(cordova);
+    alertDialog.setMessage(message);
+    alertDialog.setTitle(title);
+    alertDialog.setCancelable(true);
+
+    MultiFormatWriter multiFormatWriter = new MultiFormatWriter();
+    try {
+      BitMatrix bitMatrix = multiFormatWriter.encode(message, BarcodeFormat.QR_CODE, 500, 500);
+      BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
+      final Bitmap bitmap = barcodeEncoder.createBitmap(bitMatrix);
+      BitmapDrawable bitmapDrawable = new BitmapDrawable(bitmap);
+      alertDialog.setIcon(bitmapDrawable);
+    } catch (WriterException e) {
+      throw new RuntimeException(e);
+    }
     return alertDialog;
   }
 
