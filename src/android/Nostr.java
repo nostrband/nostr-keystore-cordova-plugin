@@ -62,8 +62,6 @@ public class Nostr extends CordovaPlugin {
 
     String privateKey = getPrivateKey(DEFAULT_VAL);
 
-    Log.i(TAG, "privateKey " + privateKey);
-
     if ("".equals(privateKey)) {
 
       prompt("Please enter your private key", "Private key", Arrays.asList("cancel", "save"), "nsec...", callbackContext);
