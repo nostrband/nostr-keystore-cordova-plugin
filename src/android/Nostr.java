@@ -559,7 +559,7 @@ public class Nostr extends CordovaPlugin {
               try {
                 String keysData = getKeysStringData();
                 JSONObject keysObjectData = getKeysObjectData(keysData);
-                if (!existKey(publicKey, keysObjectData.names())) {
+                if (existKey(publicKey, keysObjectData.names())) {
                   callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Key doesn't exist"));
                 }
                 if (existKeyName(publicKey, keyName, keysObjectData)) {
