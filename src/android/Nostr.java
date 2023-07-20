@@ -282,7 +282,9 @@ public class Nostr extends CordovaPlugin {
     JSONObject jsonObject = args.getJSONObject(0);
     String publicKey = jsonObject.getString("pubkey");
     String plainText = jsonObject.getString("plaintext");
-    String privateKey = getPrivateKey(publicKey);
+
+    String currentAlias = getCurrentAlias();
+    String privateKey = getPrivateKey(currentAlias);
     byte[] bytePrivateKey = getBytePrivateKey(privateKey);
 
     String encryptedText = Utils.encrypt(plainText, bytePrivateKey, generatePublicKey(privateKey));
@@ -296,7 +298,9 @@ public class Nostr extends CordovaPlugin {
     JSONObject jsonObject = args.getJSONObject(0);
     String publicKey = jsonObject.getString("pubkey");
     String cipherText = jsonObject.getString("ciphertext");
-    String privateKey = getPrivateKey(publicKey);
+
+    String currentAlias = getCurrentAlias();
+    String privateKey = getPrivateKey(currentAlias);
     byte[] bytePrivateKey = getBytePrivateKey(privateKey);
 
     String encryptedText = Utils.decrypt(cipherText, bytePrivateKey, generatePublicKey(privateKey));
