@@ -119,8 +119,6 @@ public class Nostr extends CordovaPlugin {
 
     String privateKey = (Objects.nonNull(currentAlias) && !"".equals(currentAlias)) ? getPrivateKey(currentAlias) : "";
 
-    Log.i(TAG, "privateKey " + privateKey);
-
     if ("".equals(privateKey)) {
 
       addKeyPrompt(callbackContext);
@@ -129,8 +127,6 @@ public class Nostr extends CordovaPlugin {
     }
 
     String publicKey = new String(generatePublicKey(privateKey), StandardCharsets.UTF_8);
-
-    Log.i(TAG, "publicKey " + publicKey);
 
     callbackContext.success(initResponseJSONObject(publicKey));
 
