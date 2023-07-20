@@ -9,12 +9,18 @@ import android.graphics.drawable.BitmapDrawable;
 import android.security.KeyPairGeneratorSpec;
 import android.util.Log;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.google.android.material.R;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+import com.journeyapps.barcodescanner.BarcodeEncoder;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
@@ -35,11 +41,11 @@ import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -47,12 +53,6 @@ import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.security.auth.x500.X500Principal;
-
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.MultiFormatWriter;
-import com.google.zxing.WriterException;
-import com.google.zxing.common.BitMatrix;
-import com.journeyapps.barcodescanner.BarcodeEncoder;
 
 import kotlin.Triple;
 
@@ -100,6 +100,14 @@ public class Nostr extends CordovaPlugin {
 
       return deleteKey(args, callbackContext);
 
+    } else if (action.equals("encrypt")) {
+
+      return encrypt(args, callbackContext);
+
+    } else if (action.equals("decrypt")) {
+
+      return decrypt(args, callbackContext);
+
     }
 
     return false;
@@ -115,12 +123,13 @@ public class Nostr extends CordovaPlugin {
 
     if ("".equals(privateKey)) {
 
-      prompt("Please enter your private key", "Private key", Arrays.asList("cancel", "save"), callbackContext);
+      addKeyPrompt(callbackContext);
 
       return true;
     }
 
     String publicKey = new String(generatePublicKey(privateKey), StandardCharsets.UTF_8);
+
     Log.i(TAG, "publicKey " + publicKey);
 
     callbackContext.success(initResponseJSONObject(publicKey));
@@ -165,7 +174,7 @@ public class Nostr extends CordovaPlugin {
 
   private boolean addKey(CallbackContext callbackContext) {
 
-    prompt("Please enter your private key", "Private key", Arrays.asList("cancel", "save"), callbackContext);
+    addKeyPrompt(callbackContext);
 
     return true;
   }
@@ -234,9 +243,10 @@ public class Nostr extends CordovaPlugin {
 
 
     Runnable runnable = () -> {
-      AlertDialog.Builder alertDialog = initAlertDialog1(privateKey, "Private Key");
-      setOkButton(alertDialog, "ok", callbackContext);
-      setOnOkListener(alertDialog, callbackContext);
+      AlertDialog.Builder alertDialogBuilder = initAlertDialog1(privateKey, "Private Key");
+      setNegativeButton(alertDialogBuilder, "ok", callbackContext, PluginResult.Status.OK);
+      setOnCancelListener(alertDialogBuilder, callbackContext, PluginResult.Status.OK);
+      AlertDialog alertDialog = showAlertDialog(alertDialogBuilder);
       changeTextDirection(alertDialog);
     };
 
@@ -259,14 +269,43 @@ public class Nostr extends CordovaPlugin {
     }
 
     Runnable runnable = () -> {
-      AlertDialog.Builder alertDialog = initAlertDialog("", "Do you want delete key?");
-      setPositiveDeleteButton(alertDialog, "ok", keysObjectData, publicKey, callbackContext);
-      setOkButton(alertDialog, "cancel", callbackContext);
-      setOnOkListener(alertDialog, callbackContext);
+      AlertDialog.Builder alertDialogBuilder = initAlertDialog("", "Do you want delete key?");
+      setPositiveDeleteButton(alertDialogBuilder, "ok", keysObjectData, publicKey, callbackContext);
+      setNegativeButton(alertDialogBuilder, "cancel", callbackContext, PluginResult.Status.OK);
+      setOnCancelListener(alertDialogBuilder, callbackContext, PluginResult.Status.OK);
+      AlertDialog alertDialog = showAlertDialog(alertDialogBuilder);
       changeTextDirection(alertDialog);
     };
 
     this.cordova.getActivity().runOnUiThread(runnable);
+
+    return true;
+  }
+
+  private boolean encrypt(JSONArray args, CallbackContext callbackContext) throws JSONException {
+    JSONObject jsonObject = args.getJSONObject(0);
+    String publicKey = jsonObject.getString("pubkey");
+    String plainText = jsonObject.getString("plaintext");
+    String privateKey = getPrivateKey(publicKey);
+    byte[] bytePrivateKey = getBytePrivateKey(privateKey);
+
+    String encryptedText = Utils.encrypt(plainText, bytePrivateKey, generatePublicKey(privateKey));
+
+    callbackContext.success(encryptedText);
+
+    return true;
+  }
+
+  private boolean decrypt(JSONArray args, CallbackContext callbackContext) throws JSONException {
+    JSONObject jsonObject = args.getJSONObject(0);
+    String publicKey = jsonObject.getString("pubkey");
+    String cipherText = jsonObject.getString("ciphertext");
+    String privateKey = getPrivateKey(publicKey);
+    byte[] bytePrivateKey = getBytePrivateKey(privateKey);
+
+    String encryptedText = Utils.decrypt(cipherText, bytePrivateKey, generatePublicKey(privateKey));
+
+    callbackContext.success(encryptedText);
 
     return true;
   }
@@ -473,26 +512,29 @@ public class Nostr extends CordovaPlugin {
     }
   }
 
-  private synchronized void prompt(String message, String title, List<String> buttonLabels, final CallbackContext callbackContext) {
+  private synchronized void addKeyPrompt(CallbackContext callbackContext) {
 
     Runnable runnable = () -> {
+      AlertDialog.Builder alertDialogBuilder = initAlertDialog("Please enter your private key", "Private key");
 
-      AlertDialog.Builder alertDialog = initAlertDialog(message, title);
-      final TextInputLayout namePromptInput = initInput("name");
-      final TextInputLayout nsecPromptInput = initInput("nsec...");
-      initInputs(alertDialog, namePromptInput, nsecPromptInput);
+      TextInputLayout namePromptInput = initInput("name");
+      TextInputLayout nsecPromptInput = initInput("nsec...");
+      initAddKeyInputs(alertDialogBuilder, namePromptInput, nsecPromptInput);
 
-      setNegativeButton(alertDialog, buttonLabels.get(0), callbackContext);
-      setPositiveButton(alertDialog, buttonLabels.get(1), namePromptInput, nsecPromptInput, callbackContext);
-      setNeutralButton(alertDialog, "Generate nsec", nsecPromptInput, callbackContext);
-      setOnCancelListener(alertDialog, callbackContext);
-      changeTextDirection1(alertDialog, nsecPromptInput);
+      setNegativeButton(alertDialogBuilder, "cancel", callbackContext, PluginResult.Status.ERROR);
+      setAddKeyPositiveButton(alertDialogBuilder, "save", namePromptInput, nsecPromptInput, callbackContext);
+      setNeutralButton(alertDialogBuilder, "Generate nsec", nsecPromptInput, callbackContext);
+      setOnCancelListener(alertDialogBuilder, callbackContext, PluginResult.Status.ERROR);
+
+      AlertDialog alertDialog = showAlertDialog(alertDialogBuilder);
+      setOnClickNeutralButtonListener(alertDialog, nsecPromptInput);
+      changeTextDirection(alertDialog);
     };
 
     this.cordova.getActivity().runOnUiThread(runnable);
   }
 
-  private void initInputs(AlertDialog.Builder alertDialog, TextInputLayout namePromptInput, TextInputLayout nsecPromptInput) {
+  private void initAddKeyInputs(AlertDialog.Builder alertDialog, TextInputLayout namePromptInput, TextInputLayout nsecPromptInput) {
     LinearLayout linearLayout = new LinearLayout(alertDialog.getContext());
     linearLayout.setOrientation(LinearLayout.VERTICAL);
     linearLayout.addView(namePromptInput);
@@ -540,42 +582,71 @@ public class Nostr extends CordovaPlugin {
       BitMatrix bitMatrix = multiFormatWriter.encode(message, BarcodeFormat.QR_CODE, 500, 500);
       BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
       final Bitmap bitmap = barcodeEncoder.createBitmap(bitMatrix);
-      BitmapDrawable bitmapDrawable = new BitmapDrawable(bitmap);
-      alertDialog.setIcon(bitmapDrawable);
+      ImageView imageView = new ImageView(getContext());
+      imageView.setImageBitmap(bitmap);
+      alertDialog.setView(imageView);
     } catch (WriterException e) {
       throw new RuntimeException(e);
     }
     return alertDialog;
   }
 
-  private void setPositiveButton(AlertDialog.Builder alertDialog, String buttonLabel, TextInputLayout namePromptInput, TextInputLayout nsecPromptInput, CallbackContext callbackContext) {
+  private void setAddKeyPositiveButton(AlertDialog.Builder alertDialog, String buttonLabel, TextInputLayout namePromptInput, TextInputLayout nsecPromptInput, CallbackContext callbackContext) {
     alertDialog.setPositiveButton(buttonLabel,
             (dialog, which) -> {
               dialog.dismiss();
-              String privateKey = nsecPromptInput.getEditText().getText().toString();
-              String keyName = namePromptInput.getEditText().getText().toString();
+              String privateKey = nsecPromptInput.getEditText() != null ? nsecPromptInput.getEditText().getText().toString().trim() : "";
+              String keyName = namePromptInput.getEditText() != null ? namePromptInput.getEditText().getText().toString().trim() : "";
+
+              if (!isValidAddKeyInputValues(privateKey, keyName)) {
+                callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, "PrivateKey or Name isn't valid"));
+                return;
+              }
+
               String publicKey = new String(generatePublicKey(privateKey), StandardCharsets.UTF_8);
 
               try {
                 String keysData = getKeysStringData();
                 JSONObject keysObjectData = getKeysObjectData(keysData);
                 if (existKey(publicKey, keysObjectData.names())) {
-                  callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Key doesn't exist"));
+                  callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Key already exist"));
+                  return;
                 }
                 if (existKeyName(publicKey, keyName, keysObjectData)) {
                   callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Name already exist"));
+                  return;
                 }
                 saveCurrentAlias(keysObjectData, keyName, publicKey);
               } catch (JSONException e) {
-                throw new RuntimeException(e);
+                callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Something went wrong"));
+                return;
               }
 
               savePrivateKey(publicKey, privateKey);
 
               JSONObject result = initResponseJSONObject(publicKey);
               callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
-
             });
+  }
+
+  private boolean isValidAddKeyInputValues(String privateKey, String name) {
+    if ((name == null || "".equals(name)) || (privateKey == null || "".equals(privateKey))) {
+      return false;
+    }
+
+    try {
+      Triple<String, byte[], Bech32.Encoding> stringEncodingTriple = Bech32.decodeBytes(privateKey, false);
+      if (stringEncodingTriple.getSecond() == null || stringEncodingTriple.getSecond().length != 32) {
+        return false;
+      }
+      if (stringEncodingTriple.getFirst() == null || !"nsec".equals(stringEncodingTriple.getFirst())) {
+        return false;
+      }
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+
+    return true;
   }
 
   private void setNeutralButton(AlertDialog.Builder alertDialog, String buttonLabel, TextInputLayout nsecPromptInput, CallbackContext callbackContext) {
@@ -596,7 +667,7 @@ public class Nostr extends CordovaPlugin {
                   keysObjectData.put(CURRENT_ALIAS, "");
                 }
               } catch (JSONException e) {
-                throw new RuntimeException(e);
+                callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Something went wrong"));
               }
 
               KeyStorage.removeValues(getContext(), publicKey);
@@ -605,33 +676,18 @@ public class Nostr extends CordovaPlugin {
             });
   }
 
-  private void setNegativeButton(AlertDialog.Builder alertDialog, String buttonLabel, CallbackContext callbackContext) {
+  private void setNegativeButton(AlertDialog.Builder alertDialog, String buttonLabel, CallbackContext callbackContext, PluginResult.Status status) {
     alertDialog.setNegativeButton(buttonLabel,
             (dialog, which) -> {
               dialog.dismiss();
-              callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
+              callbackContext.sendPluginResult(new PluginResult(status));
             });
   }
 
-  private void setOkButton(AlertDialog.Builder alertDialog, String buttonLabel, CallbackContext callbackContext) {
-    alertDialog.setNegativeButton(buttonLabel,
-            (dialog, which) -> {
-              dialog.dismiss();
-              callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK));
-            });
-  }
-
-  private void setOnOkListener(AlertDialog.Builder alertDialog, CallbackContext callbackContext) {
+  private void setOnCancelListener(AlertDialog.Builder alertDialog, CallbackContext callbackContext, PluginResult.Status status) {
     alertDialog.setOnCancelListener(dialog -> {
       dialog.dismiss();
-      callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK));
-    });
-  }
-
-  private void setOnCancelListener(AlertDialog.Builder alertDialog, CallbackContext callbackContext) {
-    alertDialog.setOnCancelListener(dialog -> {
-      dialog.dismiss();
-      callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
+      callbackContext.sendPluginResult(new PluginResult(status));
     });
   }
 
@@ -657,34 +713,32 @@ public class Nostr extends CordovaPlugin {
     }
   }
 
-  @SuppressLint("NewApi")
-  private void changeTextDirection(AlertDialog.Builder dlg) {
-    int currentApiVersion = android.os.Build.VERSION.SDK_INT;
-    dlg.create();
-    AlertDialog dialog = dlg.show();
-    dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+  private AlertDialog showAlertDialog(AlertDialog.Builder dlg) {
+    return dlg.show();
+  }
 
+  private void setOnClickNeutralButtonListener(AlertDialog alertDialog, TextInputLayout nsecPromptInput) {
+    alertDialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+      EditText editText = nsecPromptInput.getEditText();
+      String newPrivateKey = Bech32.encodeBytes("nsec", generateRandomIntArray(32), Bech32.Encoding.Bech32);
+      editText.setText(newPrivateKey);
     });
+  }
 
-    if (currentApiVersion >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
-      TextView messageView = dialog.findViewById(android.R.id.message);
-      messageView.setTextDirection(android.view.View.TEXT_DIRECTION_LOCALE);
+  private byte[] generateRandomIntArray(int size) {
+    byte[] array = new byte[size];
+    Random random = new Random();
+    for (int i = 0; i < size; i++) {
+      array[i] = (byte) random.nextInt(32);
     }
+    return array;
   }
 
   @SuppressLint("NewApi")
-  private void changeTextDirection1(AlertDialog.Builder dlg, TextInputLayout nsecPromptInput) {
+  private void changeTextDirection(AlertDialog alertDialog) {
     int currentApiVersion = android.os.Build.VERSION.SDK_INT;
-    dlg.create();
-    AlertDialog dialog = dlg.show();
-    dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
-      EditText editText = nsecPromptInput.getEditText();
-      //todo implement logic for generating nsec
-      editText.setText("nsec1560zpnjua2kuzas7qj7n7h0adxk4d8z4d59vxkattetq8ryway6q5v0psr");
-    });
-
     if (currentApiVersion >= android.os.Build.VERSION_CODES.JELLY_BEAN_MR1) {
-      TextView messageView = dialog.findViewById(android.R.id.message);
+      TextView messageView = alertDialog.findViewById(android.R.id.message);
       messageView.setTextDirection(android.view.View.TEXT_DIRECTION_LOCALE);
     }
   }

@@ -9,6 +9,8 @@ const SELECT_KEY = "selectKey";
 const EDIT_KEY = "editKey";
 const SHOW_KEY = "showKey";
 const DELETE_KEY = "deleteKey";
+const ENCRYPT_KEY = "encrypt";
+const ENCRYPT_KEY = "decrypt";
 
 var NostrKeyStore = {
 
@@ -42,6 +44,14 @@ var NostrKeyStore = {
 
     deleteKey: function (success, error, msg) {
         exec(success, error, SERVICE_NAME, DELETE_KEY, [msg]);
+    },
+
+    encrypt: function (success, error, msg) {
+        exec(success, error, SERVICE_NAME, ENCRYPT_KEY, [msg]);
+    },
+
+    decrypt: function (success, error, msg) {
+        exec(success, error, SERVICE_NAME, ENCRYPT_KEY, [msg]);
     }
 
 };
@@ -74,6 +84,34 @@ function onDeviceReady() {
                     msg
                 )
             })
+        },
+        nip04: {
+            encrypt: function (msg) {
+                return new Promise((resolve, reject) => {
+                    cordova.plugins.NostrKeyStore.encrypt(
+                        function (res) {
+                            resolve(res)
+                        },
+                        function (error) {
+                            reject(error)
+                        },
+                        msg
+                    )
+                })
+            },
+            decrypt: function (msg) {
+                return new Promise((resolve, reject) => {
+                    cordova.plugins.NostrKeyStore.decrypt(
+                        function (res) {
+                            resolve(res)
+                        },
+                        function (error) {
+                            reject(error)
+                        },
+                        msg
+                    )
+                })
+            }
         }
     }
 
