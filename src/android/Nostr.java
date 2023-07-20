@@ -287,7 +287,7 @@ public class Nostr extends CordovaPlugin {
     String privateKey = getPrivateKey(currentAlias);
     byte[] bytePrivateKey = getBytePrivateKey(privateKey);
 
-    String encryptedText = Utils.encrypt(plainText, bytePrivateKey, generatePublicKey(privateKey));
+    String encryptedText = Utils.encrypt(plainText, bytePrivateKey, Hex.decode(publicKey));
 
     callbackContext.success(encryptedText);
 
@@ -303,7 +303,7 @@ public class Nostr extends CordovaPlugin {
     String privateKey = getPrivateKey(currentAlias);
     byte[] bytePrivateKey = getBytePrivateKey(privateKey);
 
-    String encryptedText = Utils.decrypt(cipherText, bytePrivateKey, generatePublicKey(privateKey));
+    String encryptedText = Utils.decrypt(cipherText, bytePrivateKey, Hex.decode(publicKey));
 
     callbackContext.success(encryptedText);
 
