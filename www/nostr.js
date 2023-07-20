@@ -86,7 +86,7 @@ function onDeviceReady() {
             })
         },
         nip04: {
-            encrypt: function (msg) {
+            encrypt: function (pubkey, plaintext) {
                 return new Promise((resolve, reject) => {
                     cordova.plugins.NostrKeyStore.encrypt(
                         function (res) {
@@ -95,11 +95,11 @@ function onDeviceReady() {
                         function (error) {
                             reject(error)
                         },
-                        msg
+                        {pubkey, plaintext}
                     )
                 })
             },
-            decrypt: function (msg) {
+            decrypt: function (pubkey, ciphertext) {
                 return new Promise((resolve, reject) => {
                     cordova.plugins.NostrKeyStore.decrypt(
                         function (res) {
@@ -108,7 +108,7 @@ function onDeviceReady() {
                         function (error) {
                             reject(error)
                         },
-                        msg
+                        {pubkey, ciphertext}
                     )
                 })
             }
