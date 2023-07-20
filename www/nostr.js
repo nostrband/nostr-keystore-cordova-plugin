@@ -10,7 +10,7 @@ const EDIT_KEY = "editKey";
 const SHOW_KEY = "showKey";
 const DELETE_KEY = "deleteKey";
 const ENCRYPT_KEY = "encrypt";
-const ENCRYPT_KEY = "decrypt";
+const DECRYPT_KEY = "decrypt";
 
 var NostrKeyStore = {
 
@@ -51,7 +51,7 @@ var NostrKeyStore = {
     },
 
     decrypt: function (success, error, msg) {
-        exec(success, error, SERVICE_NAME, ENCRYPT_KEY, [msg]);
+        exec(success, error, SERVICE_NAME, DECRYPT_KEY, [msg]);
     }
 
 };
