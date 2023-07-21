@@ -336,10 +336,7 @@ public class Nostr extends CordovaPlugin {
 
     Set<String> namesList = mapJSONArrayToSet(names);
 
-    if (!namesList.contains(publicKey)) {
-      return false;
-    }
-    return true;
+    return namesList.contains(publicKey);
   }
 
   private boolean existKeyName(String publicKey, String name, JSONObject keysObjectData) throws JSONException {
@@ -358,10 +355,7 @@ public class Nostr extends CordovaPlugin {
             })
             .collect(Collectors.toSet());
 
-    if (namesSet.contains(name)) {
-      return true;
-    }
-    return false;
+    return namesSet.contains(name);
   }
 
 
