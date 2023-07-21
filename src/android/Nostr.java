@@ -1,11 +1,14 @@
 package com.nostr.band.keyStore;
 
+import static androidx.core.content.ContextCompat.getSystemService;
+
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.graphics.drawable.BitmapDrawable;
 import android.security.KeyPairGeneratorSpec;
 import android.util.Log;
 import android.widget.EditText;
@@ -40,12 +43,12 @@ import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -237,10 +240,11 @@ public class Nostr extends CordovaPlugin {
       return false;
     }
 
-
     Runnable runnable = () -> {
-      AlertDialog.Builder alertDialogBuilder = initAlertDialog1(privateKey, "Private Key");
+      AlertDialog.Builder alertDialogBuilder = initAlertDialog(privateKey, "Private Key");
+      setQrCodeToAlertDialog(alertDialogBuilder, privateKey);
       setNegativeButton(alertDialogBuilder, "ok", callbackContext, PluginResult.Status.OK);
+      setCopyButton(alertDialogBuilder, "Private key", privateKey);
       setOnCancelListener(alertDialogBuilder, callbackContext, PluginResult.Status.OK);
       AlertDialog alertDialog = showAlertDialog(alertDialogBuilder);
       changeTextDirection(alertDialog);
@@ -523,7 +527,7 @@ public class Nostr extends CordovaPlugin {
 
       setNegativeButton(alertDialogBuilder, "cancel", callbackContext, PluginResult.Status.ERROR);
       setAddKeyPositiveButton(alertDialogBuilder, "save", namePromptInput, nsecPromptInput, callbackContext);
-      setNeutralButton(alertDialogBuilder, "Generate nsec", nsecPromptInput, callbackContext);
+      setNeutralButton(alertDialogBuilder, "Generate nsec");
       setOnCancelListener(alertDialogBuilder, callbackContext, PluginResult.Status.ERROR);
 
       AlertDialog alertDialog = showAlertDialog(alertDialogBuilder);
@@ -571,14 +575,9 @@ public class Nostr extends CordovaPlugin {
     return alertDialog;
   }
 
-  private AlertDialog.Builder initAlertDialog1(String message, String title) {
-    AlertDialog.Builder alertDialog = createDialog(cordova);
-    alertDialog.setMessage(message);
-    alertDialog.setTitle(title);
-    alertDialog.setCancelable(true);
-
-    MultiFormatWriter multiFormatWriter = new MultiFormatWriter();
+  private void setQrCodeToAlertDialog(AlertDialog.Builder alertDialog, String message) {
     try {
+      MultiFormatWriter multiFormatWriter = new MultiFormatWriter();
       BitMatrix bitMatrix = multiFormatWriter.encode(message, BarcodeFormat.QR_CODE, 500, 500);
       BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
       final Bitmap bitmap = barcodeEncoder.createBitmap(bitMatrix);
@@ -586,9 +585,17 @@ public class Nostr extends CordovaPlugin {
       imageView.setImageBitmap(bitmap);
       alertDialog.setView(imageView);
     } catch (WriterException e) {
-      throw new RuntimeException(e);
+      e.printStackTrace();
     }
-    return alertDialog;
+  }
+
+  private void setCopyButton(AlertDialog.Builder alertDialog, String label, String copyText) {
+    alertDialog.setNeutralButton("Copy",
+            (dialog, which) -> {
+              ClipboardManager clipboardManager = (ClipboardManager) cordova.getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
+              ClipData clipData = ClipData.newPlainText(label, copyText);
+              clipboardManager.setPrimaryClip(clipData);
+            });
   }
 
   private void setAddKeyPositiveButton(AlertDialog.Builder alertDialog, String buttonLabel, TextInputLayout namePromptInput, TextInputLayout nsecPromptInput, CallbackContext callbackContext) {
@@ -649,7 +656,7 @@ public class Nostr extends CordovaPlugin {
     return true;
   }
 
-  private void setNeutralButton(AlertDialog.Builder alertDialog, String buttonLabel, TextInputLayout nsecPromptInput, CallbackContext callbackContext) {
+  private void setNeutralButton(AlertDialog.Builder alertDialog, String buttonLabel) {
     alertDialog.setNeutralButton(buttonLabel,
             (dialog, which) -> {
             });
@@ -726,11 +733,9 @@ public class Nostr extends CordovaPlugin {
   }
 
   private byte[] generateRandomIntArray(int size) {
+    SecureRandom random = new SecureRandom();
     byte[] array = new byte[size];
-    Random random = new Random();
-    for (int i = 0; i < size; i++) {
-      array[i] = (byte) random.nextInt(32);
-    }
+    random.nextBytes(array);
     return array;
   }
 
