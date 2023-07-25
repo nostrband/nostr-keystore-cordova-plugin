@@ -39,4 +39,9 @@ object KeyStorage {
             ByteArray(0)
         }
     }
+
+    @JvmStatic
+    fun removeValues(context: Context, keyAlias: String) {
+        context.deleteFile(SKS_FILENAME + keyAlias)
+    }
 }

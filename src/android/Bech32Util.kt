@@ -28,6 +28,49 @@ object Bech32 {
         }
     }
 
+    @JvmStatic
+    fun encode(hrp: String, int5s: Array<Int5>, encoding: Encoding): String {
+        require(hrp.lowercase() == hrp || hrp.uppercase() == hrp) { "mixed case strings are not valid bech32 prefixes" }
+        val data = int5s.toByteArray().toTypedArray()
+        val checksum = when (encoding) {
+            Encoding.Beck32WithoutChecksum -> arrayOf()
+            else -> checksum(hrp, data, encoding)
+        }
+        return hrp + "1" + (data + checksum).map { i -> alphabet[i.toInt()] }.toCharArray()
+                .concatToString()
+    }
+
+    @JvmStatic
+    fun encodeBytes(hrp: String, data: ByteArray, encoding: Encoding): String =
+            encode(hrp, eight2five(data), encoding)
+
+    @JvmStatic
+    fun eight2five(input: ByteArray): Array<Int5> {
+        var buffer = 0L
+        val output = ArrayList<Int5>()
+        var count = 0
+        input.forEach { b ->
+            buffer = (buffer shl 8) or (b.toLong() and 0xff)
+            count += 8
+            while (count >= 5) {
+                output.add(((buffer shr (count - 5)) and 31).toByte())
+                count -= 5
+            }
+        }
+        if (count > 0) output.add(((buffer shl (5 - count)) and 31).toByte())
+        return output.toTypedArray()
+    }
+
+    private fun checksum(hrp: String, data: Array<Int5>, encoding: Encoding): Array<Int5> {
+        val values = expand(hrp) + data
+        val poly = polymod(
+                values,
+                arrayOf(0.toByte(), 0.toByte(), 0.toByte(), 0.toByte(), 0.toByte(), 0.toByte())
+        ) xor encoding.constant
+        return Array(6) { i -> (poly.shr(5 * (5 - i)) and 31).toByte() }
+    }
+
+
     private fun expand(hrp: String): Array<Int5> {
         val result = Array<Int5>(hrp.length + 1 + hrp.length) { 0 }
         for (i in hrp.indices) {
