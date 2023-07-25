@@ -121,7 +121,6 @@ public class Nostr extends CordovaPlugin {
     String currentAlias = getCurrentAlias();
 
     String privateKey = (Objects.nonNull(currentAlias) && !"".equals(currentAlias)) ? getPrivateKey(currentAlias) : "";
-
     if ("".equals(privateKey)) {
 
       addKeyPrompt(callbackContext);
