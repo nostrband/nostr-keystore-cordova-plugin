@@ -1,6 +1,6 @@
 package com.nostr.band.keyStore;
 
-import static androidx.core.content.ContextCompat.getSystemService;
+/*import static androidx.core.content.ContextCompat.getSystemService;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
@@ -23,7 +23,7 @@ import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
-import com.journeyapps.barcodescanner.BarcodeEncoder;
+import com.journeyapps.barcodescanner.BarcodeEncoder;*/
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
@@ -32,7 +32,7 @@ import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.spongycastle.util.encoders.Hex;
+/*import org.spongycastle.util.encoders.Hex;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -55,23 +55,24 @@ import java.util.stream.Collectors;
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
-import javax.security.auth.x500.X500Principal;
+import javax.security.auth.x500.X500Principal;*/
 
 import kotlin.Triple;
 
 public class Nostr extends CordovaPlugin {
-  private static final String CURRENT_ALIAS = "currentAlias";
+  /*private static final String CURRENT_ALIAS = "currentAlias";
   private static final String KEYS_ALIAS = "nostrKeys";
   private static final String KEYSTORE_PROVIDER_1 = "AndroidKeyStore";
   private static final String KEYSTORE_PROVIDER_2 = "AndroidKeyStoreBCWorkaround";
   private static final String KEYSTORE_PROVIDER_3 = "AndroidOpenSSL";
   private static final String RSA_ALGORITHM = "RSA/ECB/PKCS1Padding";
-  private static final String TAG = "NostrLogTag";
+  private static final String TAG = "NostrLogTag";*/
 
   @Override
-  public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+  public boolean execute(String action, JSONArray args, CallbackContext callbackContext){
 
-    if (action.equals("getPublicKey")) {
+    return  true;
+   /* if (action.equals("getPublicKey")) {
 
       return getPublicKey(callbackContext);
 
@@ -113,10 +114,10 @@ public class Nostr extends CordovaPlugin {
 
     }
 
-    return false;
+    return false;*/
   }
 
-  private boolean getPublicKey(CallbackContext callbackContext) throws JSONException {
+  /*private boolean getPublicKey(CallbackContext callbackContext) throws JSONException {
 
     String currentAlias = getCurrentAlias();
 
@@ -749,5 +750,5 @@ public class Nostr extends CordovaPlugin {
   private byte[] getBytePrivateKey(String privateKey) {
     Triple<String, byte[], Bech32.Encoding> stringEncodingTriple = Bech32.decodeBytes(privateKey, false);
     return stringEncodingTriple.getSecond();
-  }
+  }*/
 }
