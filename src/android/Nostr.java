@@ -1,6 +1,16 @@
 package com.nostr.band.keyStore;
 
-import static androidx.core.content.ContextCompat.getSystemService;
+import static com.nostr.band.keyStore.Bech32.Encoding;
+import static com.nostr.band.keyStore.Bech32.decodeBytes;
+import static com.nostr.band.keyStore.Bech32.encodeBytes;
+import static com.nostr.band.keyStore.KeyStorage.readValues;
+import static com.nostr.band.keyStore.KeyStorage.removeValues;
+import static com.nostr.band.keyStore.KeyStorage.writeValues;
+import static com.nostr.band.keyStore.Utils.decrypt;
+import static com.nostr.band.keyStore.Utils.encrypt;
+import static com.nostr.band.keyStore.Utils.generateId;
+import static com.nostr.band.keyStore.Utils.pubkeyCreate;
+import static com.nostr.band.keyStore.Utils.sign;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
@@ -105,11 +115,11 @@ public class Nostr extends CordovaPlugin {
 
     } else if (action.equals("encrypt")) {
 
-      return encrypt(args, callbackContext);
+      return encryptData(args, callbackContext);
 
     } else if (action.equals("decrypt")) {
 
-      return decrypt(args, callbackContext);
+      return decryptData(args, callbackContext);
 
     }
 
@@ -139,15 +149,15 @@ public class Nostr extends CordovaPlugin {
 
     String currentAlias = getCurrentAlias();
     String privateKey = getPrivateKey(currentAlias);
-    byte[] publicKey = Utils.pubkeyCreate(getBytePrivateKey(privateKey));
+    byte[] publicKey = pubkeyCreate(getBytePrivateKey(privateKey));
     JSONObject jsonObject = args.getJSONObject(0);
     int kind = jsonObject.getInt("kind");
     String content = jsonObject.getString("content");
     List<List<String>> tags = parseTags(jsonObject.getJSONArray("tags"));
     long createdAt = jsonObject.getLong("created_at");
-    byte[] bytes = Utils.generateId(publicKey, createdAt, kind, tags, content);
+    byte[] bytes = generateId(publicKey, createdAt, kind, tags, content);
 
-    byte[] sign = Utils.sign(bytes, getBytePrivateKey(privateKey));
+    byte[] sign = sign(bytes, getBytePrivateKey(privateKey));
     String id = new String(Hex.encode(bytes), StandardCharsets.UTF_8);
     String signString = new String(Hex.encode(sign), StandardCharsets.UTF_8);
     String publicKeyString = new String(generatePublicKey(privateKey), StandardCharsets.UTF_8);
@@ -192,7 +202,7 @@ public class Nostr extends CordovaPlugin {
 
     keysObjectData.put(CURRENT_ALIAS, publicKey);
 
-    KeyStorage.writeValues(getContext(), KEYS_ALIAS, keysObjectData.toString().getBytes());
+    writeValues(getContext(), KEYS_ALIAS, keysObjectData.toString().getBytes());
 
     callbackContext.success(keysObjectData);
 
@@ -220,7 +230,7 @@ public class Nostr extends CordovaPlugin {
     JSONObject key = keysObjectData.getJSONObject(publicKey);
     key.put("name", name);
 
-    KeyStorage.writeValues(getContext(), KEYS_ALIAS, keysObjectData.toString().getBytes());
+    writeValues(getContext(), KEYS_ALIAS, keysObjectData.toString().getBytes());
 
     callbackContext.success(keysObjectData);
 
@@ -281,7 +291,7 @@ public class Nostr extends CordovaPlugin {
     return true;
   }
 
-  private boolean encrypt(JSONArray args, CallbackContext callbackContext) throws JSONException {
+  private boolean encryptData(JSONArray args, CallbackContext callbackContext) throws JSONException {
     JSONObject jsonObject = args.getJSONObject(0);
     String publicKey = jsonObject.getString("pubkey");
     String plainText = jsonObject.getString("plaintext");
@@ -290,14 +300,14 @@ public class Nostr extends CordovaPlugin {
     String privateKey = getPrivateKey(currentAlias);
     byte[] bytePrivateKey = getBytePrivateKey(privateKey);
 
-    String encryptedText = Utils.encrypt(plainText, bytePrivateKey, Hex.decode(publicKey));
+    String encryptedText = encrypt(plainText, bytePrivateKey, Hex.decode(publicKey));
 
     callbackContext.success(encryptedText);
 
     return true;
   }
 
-  private boolean decrypt(JSONArray args, CallbackContext callbackContext) throws JSONException {
+  private boolean decryptData(JSONArray args, CallbackContext callbackContext) throws JSONException {
     JSONObject jsonObject = args.getJSONObject(0);
     String publicKey = jsonObject.getString("pubkey");
     String cipherText = jsonObject.getString("ciphertext");
@@ -306,7 +316,7 @@ public class Nostr extends CordovaPlugin {
     String privateKey = getPrivateKey(currentAlias);
     byte[] bytePrivateKey = getBytePrivateKey(privateKey);
 
-    String encryptedText = Utils.decrypt(cipherText, bytePrivateKey, Hex.decode(publicKey));
+    String encryptedText = decrypt(cipherText, bytePrivateKey, Hex.decode(publicKey));
 
     callbackContext.success(encryptedText);
 
@@ -328,7 +338,7 @@ public class Nostr extends CordovaPlugin {
 
   private void saveCurrentAlias(JSONObject keysObjectData, String keyName, String publicKey) throws JSONException {
     addKey(keysObjectData, publicKey, keyName);
-    KeyStorage.writeValues(getContext(), KEYS_ALIAS, keysObjectData.toString().getBytes());
+    writeValues(getContext(), KEYS_ALIAS, keysObjectData.toString().getBytes());
   }
 
   private boolean existKey(String publicKey, JSONArray names) throws JSONException {
@@ -405,7 +415,7 @@ public class Nostr extends CordovaPlugin {
   }
 
   private String getKeysStringData() {
-    byte[] keys = KeyStorage.readValues(getContext(), KEYS_ALIAS);
+    byte[] keys = readValues(getContext(), KEYS_ALIAS);
     return new String(keys);
   }
 
@@ -454,7 +464,7 @@ public class Nostr extends CordovaPlugin {
       cipherOutputStream.close();
       byte[] vals = outputStream.toByteArray();
 
-      KeyStorage.writeValues(getContext(), alias, vals);
+      writeValues(getContext(), alias, vals);
       Log.i(TAG, "key created and stored successfully");
 
     } catch (Exception e) {
@@ -471,7 +481,7 @@ public class Nostr extends CordovaPlugin {
 
       Cipher output = Cipher.getInstance(RSA_ALGORITHM);
       output.init(Cipher.DECRYPT_MODE, privateKey);
-      CipherInputStream cipherInputStream = new CipherInputStream(new ByteArrayInputStream(KeyStorage.readValues(getContext(), alias)), output);
+      CipherInputStream cipherInputStream = new CipherInputStream(new ByteArrayInputStream(readValues(getContext(), alias)), output);
 
       ArrayList<Byte> values = new ArrayList<>();
       int nextByte;
@@ -635,7 +645,7 @@ public class Nostr extends CordovaPlugin {
     }
 
     try {
-      Triple<String, byte[], Bech32.Encoding> stringEncodingTriple = Bech32.decodeBytes(privateKey, false);
+      Triple<String, byte[], Encoding> stringEncodingTriple = decodeBytes(privateKey, false);
       if (stringEncodingTriple.getSecond() == null || stringEncodingTriple.getSecond().length != 32) {
         return false;
       }
@@ -670,7 +680,7 @@ public class Nostr extends CordovaPlugin {
                 callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Something went wrong"));
               }
 
-              KeyStorage.removeValues(getContext(), publicKey);
+              removeValues(getContext(), publicKey);
 
               callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, keysObjectData));
             });
@@ -720,7 +730,7 @@ public class Nostr extends CordovaPlugin {
   private void setOnClickNeutralButtonListener(AlertDialog alertDialog, TextInputLayout nsecPromptInput) {
     alertDialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
       EditText editText = nsecPromptInput.getEditText();
-      String newPrivateKey = Bech32.encodeBytes("nsec", generateRandomIntArray(32), Bech32.Encoding.Bech32);
+      String newPrivateKey = encodeBytes("nsec", generateRandomIntArray(32), Encoding.Bech32);
       editText.setText(newPrivateKey);
     });
   }
@@ -742,12 +752,12 @@ public class Nostr extends CordovaPlugin {
   }
 
   private byte[] generatePublicKey(String privateKey) {
-    byte[] bytes = Utils.pubkeyCreate(getBytePrivateKey(privateKey));
+    byte[] bytes = pubkeyCreate(getBytePrivateKey(privateKey));
     return Hex.encode(bytes);
   }
 
   private byte[] getBytePrivateKey(String privateKey) {
-    Triple<String, byte[], Bech32.Encoding> stringEncodingTriple = Bech32.decodeBytes(privateKey, false);
+    Triple<String, byte[], Encoding> stringEncodingTriple = decodeBytes(privateKey, false);
     return stringEncodingTriple.getSecond();
   }
 }
