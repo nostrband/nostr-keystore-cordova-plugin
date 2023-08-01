@@ -1,16 +1,16 @@
 package com.nostr.band.keyStore;
 
-import static com.nostr.band.keyStore.Bech32.Encoding;
-import static com.nostr.band.keyStore.Bech32.decodeBytes;
-import static com.nostr.band.keyStore.Bech32.encodeBytes;
-import static com.nostr.band.keyStore.KeyStorage.readValues;
-import static com.nostr.band.keyStore.KeyStorage.removeValues;
-import static com.nostr.band.keyStore.KeyStorage.writeValues;
-import static com.nostr.band.keyStore.Utils.decrypt;
-import static com.nostr.band.keyStore.Utils.encrypt;
-import static com.nostr.band.keyStore.Utils.generateId;
-import static com.nostr.band.keyStore.Utils.pubkeyCreate;
-import static com.nostr.band.keyStore.Utils.sign;
+import static com.nostr.band.Bech32.Encoding;
+import static com.nostr.band.Bech32.decodeBytes;
+import static com.nostr.band.Bech32.encodeBytes;
+import static com.nostr.band.KeyStorage.readValues;
+import static com.nostr.band.KeyStorage.removeValues;
+import static com.nostr.band.KeyStorage.writeValues;
+import static com.nostr.band.Utils.decrypt;
+import static com.nostr.band.Utils.encrypt;
+import static com.nostr.band.Utils.generateId;
+import static com.nostr.band.Utils.pubkeyCreate;
+import static com.nostr.band.Utils.sign;
 
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
