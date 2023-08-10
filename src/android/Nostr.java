@@ -522,15 +522,15 @@ public class Nostr extends CordovaPlugin {
   private synchronized void addKeyPrompt(CallbackContext callbackContext) {
 
     Runnable runnable = () -> {
-      AlertDialog.Builder alertDialogBuilder = initAlertDialog("Please enter your private key", "Private key");
+      AlertDialog.Builder alertDialogBuilder = initAlertDialog("Paste your nsec1... string below, or generate a new one. Your keys are stored in an encrypted form and cannot be accessed without your permission.", "Enter your private key");
 
       TextInputLayout namePromptInput = initInput("name");
-      TextInputLayout nsecPromptInput = initInput("nsec...");
+      TextInputLayout nsecPromptInput = initInput("");
       initAddKeyInputs(alertDialogBuilder, namePromptInput, nsecPromptInput);
 
-      setNegativeButton(alertDialogBuilder, "cancel", callbackContext, PluginResult.Status.ERROR);
-      setAddKeyPositiveButton(alertDialogBuilder, "save", namePromptInput, nsecPromptInput, callbackContext);
-      setNeutralButton(alertDialogBuilder, "Generate nsec");
+      setNegativeButton(alertDialogBuilder, "Cancel", callbackContext, PluginResult.Status.ERROR);
+      setAddKeyPositiveButton(alertDialogBuilder, "Save", namePromptInput, nsecPromptInput, callbackContext);
+      setNeutralButton(alertDialogBuilder, "Generate");
       setOnCancelListener(alertDialogBuilder, callbackContext, PluginResult.Status.ERROR);
 
       AlertDialog alertDialog = showAlertDialog(alertDialogBuilder);
@@ -544,7 +544,7 @@ public class Nostr extends CordovaPlugin {
   private void initAddKeyInputs(AlertDialog.Builder alertDialog, TextInputLayout namePromptInput, TextInputLayout nsecPromptInput) {
     LinearLayout linearLayout = new LinearLayout(alertDialog.getContext());
     linearLayout.setOrientation(LinearLayout.VERTICAL);
-    linearLayout.addView(namePromptInput);
+    //linearLayout.addView(namePromptInput);
     linearLayout.addView(nsecPromptInput);
 
     alertDialog.setView(linearLayout);
@@ -622,10 +622,10 @@ public class Nostr extends CordovaPlugin {
                   callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Key already exist"));
                   return;
                 }
-                if (existKeyName(publicKey, keyName, keysObjectData)) {
-                  callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Name already exist"));
-                  return;
-                }
+//                if (existKeyName(publicKey, keyName, keysObjectData)) {
+//                  callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Name already exist"));
+//                  return;
+//                }
                 saveCurrentAlias(keysObjectData, keyName, publicKey);
               } catch (JSONException e) {
                 callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Something went wrong"));
@@ -640,7 +640,8 @@ public class Nostr extends CordovaPlugin {
   }
 
   private boolean isValidAddKeyInputValues(String privateKey, String name) {
-    if ((name == null || "".equals(name)) || (privateKey == null || "".equals(privateKey))) {
+    // (name == null || "".equals(name)) ||
+    if ((privateKey == null || "".equals(privateKey))) {
       return false;
     }
 
