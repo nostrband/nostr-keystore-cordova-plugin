@@ -612,7 +612,7 @@ public class Nostr extends CordovaPlugin {
               String keyName = namePromptInput.getEditText() != null ? namePromptInput.getEditText().getText().toString().trim() : "";
 
               if (!isValidAddKeyInputValues(privateKey, keyName)) {
-                callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, "PrivateKey or Name isn't valid"));
+                callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "PrivateKey or Name isn't valid"));
                 return;
               }
 
