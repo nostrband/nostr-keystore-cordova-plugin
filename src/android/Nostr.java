@@ -20,6 +20,8 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.security.KeyPairGeneratorSpec;
+import android.text.InputType;
+import android.text.method.PasswordTransformationMethod;
 import android.util.Log;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -559,6 +561,7 @@ public class Nostr extends CordovaPlugin {
 
     TextInputEditText editText = new TextInputEditText(textInputLayout.getContext());
     editText.setBackgroundColor(Color.WHITE);
+    editText.setTransformationMethod(PasswordTransformationMethod.getInstance());
 
     editText.setTextColor(Color.BLACK);
     editText.setText(defaultText);
