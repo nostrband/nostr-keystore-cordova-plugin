@@ -99,6 +99,10 @@ public class Nostr extends CordovaPlugin {
 
       return addKey(callbackContext);
 
+    } else if (action.equals("generateKey")) {
+
+      return generateKey(callbackContext);
+
     } else if (action.equals("selectKey")) {
 
       return selectKey(args, callbackContext);
@@ -604,6 +608,44 @@ public class Nostr extends CordovaPlugin {
             });
   }
 
+  private boolean generateKey(CallbackContext callbackContext) {
+    String newPrivateKey = encodeBytes("nsec", generateRandomIntArray(32), Encoding.Bech32);
+    saveKey(newPrivateKey, "", callbackContext);
+    return true;
+  }
+
+  private void saveKey(String privateKey, String keyName, CallbackContext callbackContext) {
+
+    if (!isValidAddKeyInputValues(privateKey, keyName)) {
+      callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "PrivateKey or Name isn't valid"));
+      return;
+    }
+
+    String publicKey = new String(generatePublicKey(privateKey), StandardCharsets.UTF_8);
+
+    try {
+      String keysData = getKeysStringData();
+      JSONObject keysObjectData = getKeysObjectData(keysData);
+      if (existKey(publicKey, keysObjectData.names())) {
+        callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Key already exist"));
+        return;
+      }
+//                if (existKeyName(publicKey, keyName, keysObjectData)) {
+//                  callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Name already exist"));
+//                  return;
+//                }
+      saveCurrentAlias(keysObjectData, keyName, publicKey);
+    } catch (JSONException e) {
+      callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Something went wrong"));
+      return;
+    }
+
+    savePrivateKey(publicKey, privateKey);
+
+    JSONObject result = initResponseJSONObject(publicKey);
+    callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
+  }
+
   private void setAddKeyPositiveButton(AlertDialog.Builder alertDialog, String buttonLabel, TextInputLayout namePromptInput, TextInputLayout nsecPromptInput, CallbackContext callbackContext) {
     alertDialog.setPositiveButton(buttonLabel,
             (dialog, which) -> {
@@ -611,34 +653,7 @@ public class Nostr extends CordovaPlugin {
               String privateKey = nsecPromptInput.getEditText() != null ? nsecPromptInput.getEditText().getText().toString().trim() : "";
               String keyName = namePromptInput.getEditText() != null ? namePromptInput.getEditText().getText().toString().trim() : "";
 
-              if (!isValidAddKeyInputValues(privateKey, keyName)) {
-                callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "PrivateKey or Name isn't valid"));
-                return;
-              }
-
-              String publicKey = new String(generatePublicKey(privateKey), StandardCharsets.UTF_8);
-
-              try {
-                String keysData = getKeysStringData();
-                JSONObject keysObjectData = getKeysObjectData(keysData);
-                if (existKey(publicKey, keysObjectData.names())) {
-                  callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Key already exist"));
-                  return;
-                }
-//                if (existKeyName(publicKey, keyName, keysObjectData)) {
-//                  callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Name already exist"));
-//                  return;
-//                }
-                saveCurrentAlias(keysObjectData, keyName, publicKey);
-              } catch (JSONException e) {
-                callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.ERROR, "Something went wrong"));
-                return;
-              }
-
-              savePrivateKey(publicKey, privateKey);
-
-              JSONObject result = initResponseJSONObject(publicKey);
-              callbackContext.sendPluginResult(new PluginResult(PluginResult.Status.OK, result));
+              saveKey(privateKey, keyName, callbackContext);
             });
   }
 
