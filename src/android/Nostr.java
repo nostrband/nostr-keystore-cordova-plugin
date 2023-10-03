@@ -84,52 +84,32 @@ public class Nostr extends CordovaPlugin {
   public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
 
     if (action.equals("getPublicKey")) {
-
-      return getPublicKey(callbackContext);
-
+      getPublicKey(callbackContext);
     } else if (action.equals("signEvent")) {
-
-      return signEvent(args, callbackContext);
-
+      signEvent(args, callbackContext);
     } else if (action.equals("listKeys")) {
-
-      return listKeys(callbackContext);
-
+      listKeys(callbackContext);
     } else if (action.equals("addKey")) {
-
-      return addKey(callbackContext);
-
+      addKey(callbackContext);
     } else if (action.equals("generateKey")) {
-
-      return generateKey(callbackContext);
-
+      generateKey(callbackContext);
     } else if (action.equals("selectKey")) {
-
-      return selectKey(args, callbackContext);
-
+      selectKey(args, callbackContext);
     } else if (action.equals("editKey")) {
-
-      return editKey(args, callbackContext);
-
+      editKey(args, callbackContext);
     } else if (action.equals("showKey")) {
-
-      return showKey(args, callbackContext);
-
+      showKey(args, callbackContext);
     } else if (action.equals("deleteKey")) {
-
-      return deleteKey(args, callbackContext);
-
+      deleteKey(args, callbackContext);
     } else if (action.equals("encrypt")) {
-
-      return encryptData(args, callbackContext);
-
+      encryptData(args, callbackContext);
     } else if (action.equals("decrypt")) {
-
-      return decryptData(args, callbackContext);
-
+      decryptData(args, callbackContext);
+    } else {
+      return false;
     }
 
-    return false;
+    return true;
   }
 
   private boolean getPublicKey(CallbackContext callbackContext) throws JSONException {
